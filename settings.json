@@ -1,39 +1,36 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "model": "sonnet",
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/tooling-audit.sh"
-          },
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/karpathy-reminder.sh"
-          }
-        ]
-      }
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(npm test:*)",
+      "Bash(pnpm test:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(jq:*)"
     ],
+    "defaultMode": "auto"
+  },
+  "model": "claude-fable-5[1m]",
+  "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Task",
+        "matcher": "Skill",
         "hooks": [
           {
             "type": "command",
-            "command": "$HOME/.claude/hooks/subagent-dispatch-audit.sh"
+            "command": "$HOME/.claude/hooks/tooling-context.sh"
           }
         ]
-      }
-    ],
-    "Stop": [
+      },
       {
+        "matcher": "TodoWrite",
         "hooks": [
           {
             "type": "command",
-            "command": "osascript -e 'on run argv\ndisplay notification (item 1 of argv) with title \"Claude Code\" subtitle (item 2 of argv) sound name \"Glass\"\nend run' \"Finished — ready for you\" \"$(basename \"$PWD\")\"",
-            "timeout": 10
+            "command": "$HOME/.claude/hooks/tooling-context.sh"
           }
         ]
       }
@@ -43,22 +40,39 @@
         "hooks": [
           {
             "type": "command",
-            "command": "msg=$(jq -r '.message // \"Claude Code needs your input\"'); osascript -e 'on run argv\ndisplay notification (item 1 of argv) with title \"Claude Code\" subtitle (item 2 of argv) sound name \"Ping\"\nend run' \"$msg\" \"$(basename \"$PWD\")\"",
-            "timeout": 10
+            "command": "$HOME/.claude/hooks/ntfy-notify.sh 'Claude needs your input'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/ntfy-notify.sh 'Claude finished responding'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/retarget-flag.sh"
           }
         ]
       }
     ]
   },
   "enabledPlugins": {
-    "superpowers@claude-plugins-official": true,
-    "code-review@claude-plugins-official": true,
     "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
     "warp@claude-code-warp": true,
     "andrej-karpathy-skills@karpathy-skills": true,
-    "huggingface-skills@claude-plugins-official": true,
-    "explanatory-output-style@claude-plugins-official": false,
-    "learning-output-style@claude-plugins-official": false
+    "i-have-adhd@i-have-adhd": true
   },
   "extraKnownMarketplaces": {
     "claude-code-warp": {
@@ -72,12 +86,15 @@
         "source": "github",
         "repo": "forrestchang/andrej-karpathy-skills"
       }
+    },
+    "i-have-adhd": {
+      "source": {
+        "source": "github",
+        "repo": "ayghri/i-have-adhd"
+      }
     }
   },
   "effortLevel": "high",
   "autoUpdatesChannel": "latest",
-  "tui": "fullscreen",
-  "skipDangerousModePermissionPrompt": true,
-  "skipWorkflowUsageWarning": true,
-  "theme": "auto"
+  "skipAutoPermissionPrompt": true
 }

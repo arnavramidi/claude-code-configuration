@@ -9,8 +9,8 @@ The skill that matters most here is `superpowers:using-superpowers` — it's the
 makes Claude *check for a relevant skill before responding at all*, including before
 clarifying questions. Without it, skills exist but get silently skipped because "this
 looks like a simple question." It's injected at session start via the `SessionStart` hook
-that ships with the `superpowers` plugin itself (not one of the three custom hooks in this
-repo — that one comes bundled with the plugin).
+that ships with the `superpowers` plugin itself (not one of the 3 wired custom hooks in
+this repo — that one comes bundled with the plugin).
 
 ## Skills actually in rotation on this setup
 
@@ -24,10 +24,8 @@ repo — that one comes bundled with the plugin).
 | `superpowers:verification-before-completion` | `superpowers` plugin | Before claiming anything is "done" — run the actual verification command first |
 | `superpowers:receiving-code-review` | `superpowers` plugin | Reading feedback critically rather than agreeing and implementing on autopilot |
 | `superpowers:using-git-worktrees` | `superpowers` plugin | Isolating feature work from the current workspace |
-| `frontend-design` | `frontend-design` plugin | Aesthetic/layout decisions, after a real component pattern is already pulled |
-| `andrej-karpathy-skills:karpathy-guidelines` | `andrej-karpathy-skills` plugin | Every code-writing/reviewing/refactoring turn — forced by `karpathy-reminder.sh` |
-| `code-review:code-review` | `code-review` plugin | Backs the `/code-review` slash command |
-| `huggingface-skills:*` (large family) | `huggingface-skills` plugin | Anything ML/HF-adjacent: model selection, SageMaker deployment, training jobs, Spaces, etc. |
+| `frontend-design` | `frontend-design` plugin | Aesthetic/layout direction for new or reshaped UI — the primary source of design guidance now that no component-retrieval MCP is registered (`docs/mcp-servers.md`) |
+| `andrej-karpathy-skills:karpathy-guidelines` | `andrej-karpathy-skills` plugin | On demand, when writing/reviewing/refactoring code — no longer force-injected on every prompt by a dedicated hook. The explanation-quality rules that hook used to repeat now live directly in `CLAUDE.md` (`docs/claude-md.md`) instead of being restated by a second mechanism |
 
 ## Replicating
 

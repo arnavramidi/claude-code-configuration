@@ -1,0 +1,10 @@
+# Default-deny: ~/.claude is the working tree; only the config surface is tracked.
+/*
+!/.gitignore
+!/CLAUDE.md
+!/settings.json
+!/README.md
+!/hooks
+!/agents
+!/commands
+!/docs
