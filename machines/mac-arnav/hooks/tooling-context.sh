@@ -5,17 +5,26 @@
 # exits 0 on every path; never emits raw `claude mcp list` output (it contains API keys).
 # Reports which servers are ALIVE. Deliberately does not map tools to job types —
 # each server ships its own description, and a hand-maintained map goes stale.
+# Health is cached PER WORKING DIRECTORY: project-scoped servers only exist inside
+# their own project, so one shared cache would advertise tools that aren't reachable.
 set -u
 INPUT=$(cat)
 SESSION_ID=$(printf '%s' "$INPUT" | jq -r '.session_id // "unknown"' 2>/dev/null) || exit 0
 TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null) || exit 0
 SKILL=$(printf '%s' "$INPUT" | jq -r '.tool_input.skill // ""' 2>/dev/null) || exit 0
+SESSION_CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // ""' 2>/dev/null) || SESSION_CWD=""
+[ -z "$SESSION_CWD" ] && SESSION_CWD="$PWD"
 
 MARKER_DIR="${TMPDIR:-/tmp}/claude-hook-markers"
 mkdir -p "$MARKER_DIR" 2>/dev/null
 find "$MARKER_DIR" -type f -mtime +2 -delete 2>/dev/null
 
-CACHE="$HOME/.claude/cache/mcp-health.txt"
+CACHE_DIR="$HOME/.claude/cache/mcp-health"
+mkdir -p "$CACHE_DIR" 2>/dev/null
+find "$CACHE_DIR" -type f -mtime +2 -delete 2>/dev/null
+CACHE_KEY=$(printf '%s' "$SESSION_CWD" | shasum 2>/dev/null | cut -c1-12)
+[ -z "$CACHE_KEY" ] && CACHE_KEY="default"
+CACHE="$CACHE_DIR/$CACHE_KEY.txt"
 CACHE_TTL=3600
 
 emit() {
@@ -29,12 +38,14 @@ refresh_cache_if_stale() {
   now=$(date +%s)
   [ -f "$CACHE" ] && mtime=$(stat -f %m "$CACHE" 2>/dev/null) && age=$((now - mtime))
   if [ "$age" -ge "$CACHE_TTL" ]; then
-    mkdir -p "$(dirname "$CACHE")" 2>/dev/null
+    # Must run from the session's directory — project-scoped servers are only
+    # visible from inside their own project.
     # Parse to name+status ONLY — raw output prints API keys in plaintext.
     # Strict allowlist (-n plus trailing /p): only fully-matching lines survive.
     # Greedy (.+) before ": " keeps colons inside plugin server names intact.
-    claude mcp list 2>/dev/null \
-      | sed -nE 's/^(.+): .+ - (✔|✘|!).*$/\1: \2/p' > "$CACHE.tmp" 2>/dev/null \
+    ( cd "$SESSION_CWD" 2>/dev/null || cd "$HOME"
+      claude mcp list 2>/dev/null \
+        | sed -nE 's/^(.+): .+ - (✔|✘|!).*$/\1: \2/p' ) > "$CACHE.tmp" 2>/dev/null \
       && mv "$CACHE.tmp" "$CACHE"
     chmod 600 "$CACHE" 2>/dev/null
   fi
@@ -42,7 +53,8 @@ refresh_cache_if_stale() {
 
 health_block() {
   if [ -s "$CACHE" ]; then
-    printf 'Live tool-connection health (✔ connected, ✘ failed, ! needs auth; cached ≤1h):\n%s' "$(cat "$CACHE")"
+    printf 'Live tool-connection health in %s (✔ connected, ✘ failed, ! needs auth; cached ≤1h):\n%s\n\nThis reflects THIS directory only — project-scoped servers do not exist outside their own project.' \
+      "$(basename "$SESSION_CWD")" "$(cat "$CACHE")"
   else
     printf 'Live tool-connection health: unavailable — do not assert any server is reachable without trying it.'
   fi
@@ -73,7 +85,7 @@ $UI_RULE"
     MARKER="$MARKER_DIR/tooling-nudge-$SESSION_ID"
     if [ ! -f "$MARKER" ]; then
       touch "$MARKER" 2>/dev/null
-      emit "First todo list this session: check the cached tool-health table at ~/.claude/cache/mcp-health.txt before assuming a server is reachable, and verify external claims with live tools rather than memory."
+      emit "First todo list this session: check the cached tool-health table for this directory before assuming a server is reachable, and verify external claims with live tools rather than memory."
     fi
     ;;
 esac
